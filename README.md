@@ -8,6 +8,16 @@ This repository contains the foundational structure for the Dagger MCP server. I
 2. Install dependencies using `pip install -r requirements.txt` or `poetry install`.
 3. Run the server using `dagger call --help`.
 
+## Running the Project
+
+To run the Dagger MCP server, execute the following command:
+
+```bash
+python src/main.py
+```
+
+Ensure all dependencies are installed before running the server.
+
 ## Project Structure
 
 - `src/main.py`: Entry point for the MCP server.
