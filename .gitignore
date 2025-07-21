@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+*.whl
+build/
+dist/
+
+# Dagger
+.dagger/
+
+# MCP
+*.lock
+*.log
+.env
+
+# macOS
+.DS_Store
