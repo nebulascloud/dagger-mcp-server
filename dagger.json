@@ -1,5 +1,5 @@
 {
-  "project": "dagger-mcp-server",
+  "name": "dagger-mcp-server",
   "sdk": "python",
-  "entry": "src.main"
+  "source": "src"
 }
