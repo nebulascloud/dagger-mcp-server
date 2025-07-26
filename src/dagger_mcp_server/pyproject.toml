@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dagger-mcp-server"
+version = "0.1.0"
+description = "A Dagger MCP server module"
+dependencies = [
+    "dagger-io",
+    "requests>=2.31.0",
+]
+
+[project.entry-points."dagger.mod"]
+main_object = "__init__:DaggerMcpServer"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
