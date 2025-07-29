@@ -10,6 +10,7 @@
 ## Development Workflow
 *   **Task Status Updates:** It is critical to keep Jira statuses aligned with the development process.
     *   **Start Work:** Before beginning implementation on a Jira task, first transition its status to "In Progress".
+    *   **Git Branching:** Never make any changes directly to the main branch and instead check that the current feature/fix branch is fit for purpose else create a new one.
     *   **Complete Work:** Upon successful completion and testing of a task, transition its status to "Done".
     *   **Sequential Progress:** Before starting the next task, ensure it is marked as "In Progress". This provides clear visibility into what is currently being worked on.
     *   **User Validation:** After implementing a task, do not transition it to "Done" or start the next task until the user has explicitly confirmed the work is complete and satisfactory. Await user approval before proceeding.
