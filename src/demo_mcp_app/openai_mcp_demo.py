@@ -23,10 +23,15 @@ class MCPConfig:
     """Configuration for MCP server connection."""
     command: str = "docker"
     args: List[str] = None
-    container_name: str = "practical_mclean"
+    container_name: str = "mcp-server-atlassian"
     mcp_command: str = "mcp-atlassian"
     
     def __post_init__(self):
+        import os
+        
+        # Allow environment variable override if needed
+        self.container_name = os.getenv('MCP_CONTAINER_NAME', self.container_name)
+            
         if self.args is None:
             self.args = ["exec", "-i", self.container_name, self.mcp_command]
 
