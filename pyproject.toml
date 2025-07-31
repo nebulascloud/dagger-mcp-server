@@ -40,6 +40,9 @@ dev = [
     "flake8>=6.0.0",
     "mypy>=1.5.0",
     "isort>=5.12.0",
+    "pylint>=3.0.0",
+    "bandit>=1.7.0",
+    "safety>=3.0.0",
 ]
 
 [project.urls]
@@ -75,3 +78,14 @@ addopts = "-v --tb=short"
 [tool.flake8]
 max-line-length = 88
 extend-ignore = ["E203", "W503"]
+
+[tool.pylint.main]
+max-line-length = 88
+disable = [
+    "missing-docstring",
+    "too-few-public-methods",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "test_*"]
+skips = ["B101"]  # Skip assert_used test
