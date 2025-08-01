@@ -32,9 +32,10 @@ class DaggerMcpServer:
         )
 
         # Copy source code
-        source_dir = dag.host().directory(".")
-        container = container.with_directory("/app", source_dir).with_workdir(
-            "/app"
+        container = (
+            container
+            .with_directory("/app", dag.host().directory("."))
+            .with_workdir("/app")
         )
 
         # Install dependencies including dev tools
