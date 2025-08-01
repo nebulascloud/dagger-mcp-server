@@ -1,7 +1,7 @@
 import dagger
-from dagger import dag, function, object_type
+from dagger import dag, function, object_type, Doc
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Annotated
 
 
 @object_type
@@ -12,7 +12,9 @@ class DaggerMcpServer:
         return "Hello, from Dagger MCP Server!"
 
     @function
-    async def code_quality(self) -> str:
+    async def code_quality(
+        self, source: Annotated[dagger.Directory, Doc("Source directory")]
+    ) -> str:
         """
         Run comprehensive code quality checks including linting, formatting,
         and security scanning.
@@ -31,15 +33,18 @@ class DaggerMcpServer:
             .with_exec(["pip", "install", "--upgrade", "pip"])
         )
 
-        # Copy source code
+        # Copy source code from demo_mcp_app directory
         container = (
             container
-            .with_directory("/app", dag.host().directory("."))
+            .with_directory("/app", source)
             .with_workdir("/app")
         )
 
         # Install dependencies including dev tools
-        container = container.with_exec(["pip", "install", "-e", ".[dev]"])
+        container = container.with_exec([
+            "pip", "install", 
+            "flake8", "black", "mypy", "isort", "pylint", "bandit", "safety"
+        ])
 
         # Run all quality checks
         results = await self._run_quality_checks(container)
@@ -93,10 +98,7 @@ class DaggerMcpServer:
         """Run flake8 linting"""
         try:
             await container.with_exec([
-                "flake8",
-                "src/",
-                "--max-line-length=88",
-                "--extend-ignore=E203,W503",
+                "flake8", ".", "--max-line-length=88", "--extend-ignore=E203,W503"
             ]).stdout()
             return {"status": "pass", "output": "No flake8 issues found", "exit_code": 0}
         except dagger.ExecError as e:
@@ -109,7 +111,7 @@ class DaggerMcpServer:
     async def _run_black_check(self, container: dagger.Container) -> Dict[str, Any]:
         """Run black formatting check"""
         try:
-            await container.with_exec(["black", "--check", "--diff", "src/"]).stdout()
+            await container.with_exec(["black", "--check", "--diff", "."]).stdout()
             return {
                 "status": "pass",
                 "output": "Code formatting is compliant with Black",
@@ -128,7 +130,7 @@ class DaggerMcpServer:
         """Run mypy type checking"""
         try:
             output = await container.with_exec([
-                "mypy", "src/", "--ignore-missing-imports"
+                "mypy", ".", "--ignore-missing-imports"
             ]).stdout()
             return {"status": "pass", "output": output.strip(), "exit_code": 0}
         except dagger.ExecError as e:
@@ -144,7 +146,7 @@ class DaggerMcpServer:
         """Run isort import sorting check"""
         try:
             await container.with_exec([
-                "isort", "--check-only", "--diff", "src/"
+                "isort", "--check-only", "--diff", "."
             ]).stdout()
             return {
                 "status": "pass",
@@ -165,7 +167,7 @@ class DaggerMcpServer:
         try:
             output = await container.with_exec([
                 "pylint",
-                "src/",
+                ".",
                 "--max-line-length=88",
                 "--disable=missing-docstring,too-few-public-methods",
             ]).stdout()
@@ -183,7 +185,7 @@ class DaggerMcpServer:
         """Run bandit security scanning"""
         try:
             output = await container.with_exec([
-                "bandit", "-r", "src/", "-f", "txt", "--skip", "B101"
+                "bandit", "-r", ".", "-f", "txt", "--skip", "B101"
             ]).stdout()
             return {"status": "pass", "output": output.strip(), "exit_code": 0}
         except dagger.ExecError as e:
@@ -198,7 +200,12 @@ class DaggerMcpServer:
     async def _run_safety(self, container: dagger.Container) -> Dict[str, Any]:
         """Run safety dependency vulnerability check"""
         try:
-            output = await container.with_exec(["safety", "check"]).stdout()
+            # Use scan command with --disable-optional-telemetry to avoid auth prompts
+            output = await container.with_exec([
+                "safety", "scan", ".", 
+                "--disable-optional-telemetry",
+                "--output", "json"
+            ]).stdout()
             return {"status": "pass", "output": output.strip(), "exit_code": 0}
         except dagger.ExecError as e:
             return {
@@ -277,7 +284,7 @@ class DaggerMcpServer:
             dag.container()
             .from_("python:3.11-slim")
             .with_exec(["pip", "install", "--upgrade", "pip"])
-            .with_directory("/app", dag.host().directory("."))
+            .with_directory("/app", dag.directory())
             .with_workdir("/app")
             .with_exec(["pip", "install", "-e", ".[dev]"])
         )
@@ -292,7 +299,7 @@ class DaggerMcpServer:
             dag.container()
             .from_("python:3.11-slim")
             .with_exec(["pip", "install", "--upgrade", "pip"])
-            .with_directory("/app", dag.host().directory("."))
+            .with_directory("/app", dag.directory())
             .with_workdir("/app")
             .with_exec(["pip", "install", "-e", ".[dev]"])
         )
@@ -307,7 +314,7 @@ class DaggerMcpServer:
             dag.container()
             .from_("python:3.11-slim")
             .with_exec(["pip", "install", "--upgrade", "pip"])
-            .with_directory("/app", dag.host().directory("."))
+            .with_directory("/app", dag.directory())
             .with_workdir("/app")
             .with_exec(["pip", "install", "-e", ".[dev]"])
         )
