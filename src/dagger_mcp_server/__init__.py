@@ -11,40 +11,38 @@ class DaggerMcpServer:
 
     @function
     async def run_tests(
-        self,
+        self, 
         source: dagger.Directory,
         test_filter: Optional[str] = None,
         coverage_threshold: int = 80,
-        branch_coverage_threshold: int = 70,
-        parallel: bool = True,
-        export_artifacts: bool = True
     ) -> str:
         """
-        Run comprehensive test suite for demo MCP application.
+        Run the test suite with coverage reporting.
         
         Args:
-            source: Source directory containing demo_mcp_app
-            test_filter: Optional filter for specific tests (e.g., "test_core")
-            coverage_threshold: Minimum line coverage percentage (default: 80%)
-            branch_coverage_threshold: Minimum branch coverage percentage (default: 70%)
-            parallel: Enable parallel test execution (default: True)
-            export_artifacts: Export test artifacts and reports (default: True)
+            source: Source directory to test
+            test_filter: Optional test filter pattern
+            coverage_threshold: Minimum coverage percentage required
             
         Returns:
-            Test execution summary as formatted string
+            Test results summary
         """
-        # Import our testing module
-        from .testing import TestRunner
+        # Import our testing module using absolute import
+        import sys
+        import os
+        # Add the current module path to sys.path if needed
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
         
-        # Create test runner and execute tests
+        from testing import TestRunner
+        
+        # Create and run tests
         test_runner = TestRunner()
         results = await test_runner.run_tests(
             source=source,
             test_filter=test_filter,
-            coverage_threshold=coverage_threshold,
-            branch_coverage_threshold=branch_coverage_threshold,
-            parallel=parallel,
-            export_artifacts=export_artifacts
+            coverage_threshold=coverage_threshold
         )
         
         return results.summary()
@@ -60,7 +58,13 @@ class DaggerMcpServer:
         Returns:
             Unit test results summary
         """
-        from .testing import TestRunner
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from testing import TestRunner
         
         test_runner = TestRunner()
         results = await test_runner.run_unit_tests(source)
@@ -83,7 +87,13 @@ Failed Tests: {', '.join(results.failed_tests) if results.failed_tests else 'Non
         Returns:
             Integration test results summary
         """
-        from .testing import TestRunner
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from testing import TestRunner
         
         test_runner = TestRunner()
         results = await test_runner.run_integration_tests(source)
@@ -106,7 +116,13 @@ Workflow Tests: {'✅' if results.workflow_tests_passed else '❌'}
         Returns:
             Performance test results summary
         """
-        from .testing import TestRunner
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from testing import TestRunner
         
         test_runner = TestRunner()
         results = await test_runner.run_performance_tests(source)
@@ -135,7 +151,13 @@ Throughput: {results.throughput_ops_per_sec:.0f} ops/sec
         Returns:
             Directory containing coverage reports
         """
-        from .testing import TestRunner
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from testing import TestRunner
         
         test_runner = TestRunner()
         return await test_runner.generate_coverage_reports(source, formats)
@@ -151,7 +173,13 @@ Throughput: {results.throughput_ops_per_sec:.0f} ops/sec
         Returns:
             Mock service test results summary
         """
-        from .testing import TestRunner
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from testing import TestRunner
         
         test_runner = TestRunner()
         results = await test_runner.run_mock_service_tests(source)

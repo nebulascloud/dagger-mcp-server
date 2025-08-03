@@ -11,7 +11,7 @@ Implements comprehensive testing with Dagger optimization patterns:
 """
 
 import dagger
-from dagger import dag, function, object_type, Arg
+from dagger import dag, function, object_type
 import asyncio
 from typing import List, Optional, Dict, Any
 import json
@@ -52,11 +52,13 @@ class TestRunner:
         test_container = (
             base_container
             .with_directory("/app", source, include=[
-                "src/demo_mcp_app/**",
+                "**",
                 "pyproject.toml",
                 "*.md"
             ])
             .with_workdir("/app")
+            # Install project dependencies from pyproject.toml
+            .with_exec(["pip", "install", "-e", ".[dev]"])
         )
         
         # Run tests based on configuration
@@ -102,7 +104,8 @@ class TestRunner:
             container
             .with_directory("/app", source)
             .with_workdir("/app")
-            .with_env_variable("PYTHONPATH", "/app/src")
+            .with_exec(["pip", "install", "-e", ".[dev]"])
+            .with_env_variable("PYTHONPATH", "/app")
         )
         
         # Run unit tests with coverage
@@ -110,7 +113,7 @@ class TestRunner:
             test_container
             .with_exec([
                 "python", "-m", "coverage", "run", "-m", "unittest", 
-                "src.demo_mcp_app.tests.test_mcp_client", "-v"
+                "tests.test_mcp_client", "-v"
             ])
             .with_exec([
                 "python", "-m", "coverage", "report", "--format=json"
@@ -146,7 +149,8 @@ class TestRunner:
             container
             .with_directory("/app", source)
             .with_workdir("/app")
-            .with_env_variable("PYTHONPATH", "/app/src")
+            .with_exec(["pip", "install", "-e", ".[dev]"])
+            .with_env_variable("PYTHONPATH", "/app")
             .with_env_variable("MOCK_SERVICES", "true")
         )
         
@@ -155,7 +159,7 @@ class TestRunner:
             test_container
             .with_exec([
                 "python", "-m", "unittest", 
-                "src.demo_mcp_app.tests.test_integration", "-v"
+                "tests.test_integration", "-v"
             ])
             .stdout()
         )
@@ -188,7 +192,8 @@ class TestRunner:
             container
             .with_directory("/app", source)
             .with_workdir("/app")
-            .with_env_variable("PYTHONPATH", "/app/src")
+            .with_exec(["pip", "install", "-e", ".[dev]"])
+            .with_env_variable("PYTHONPATH", "/app")
             .with_env_variable("PERFORMANCE_MODE", "true")
         )
         
@@ -197,7 +202,7 @@ class TestRunner:
             test_container
             .with_exec([
                 "python", "-m", "unittest", 
-                "src.demo_mcp_app.tests.test_performance", "-v"
+                "tests.test_performance", "-v"
             ])
             .stdout()
         )
@@ -236,10 +241,11 @@ class TestRunner:
             container
             .with_directory("/app", source)
             .with_workdir("/app")
-            .with_env_variable("PYTHONPATH", "/app/src")
+            .with_exec(["pip", "install", "-e", ".[dev]"])
+            .with_env_variable("PYTHONPATH", "/app")
             .with_exec([
                 "python", "-m", "coverage", "run", "-m", "unittest", 
-                "discover", "src/demo_mcp_app/tests", "-v"
+                "discover", "tests", "-v"
             ])
         )
         
@@ -283,6 +289,7 @@ class TestRunner:
             container
             .with_directory("/app", source)
             .with_workdir("/app")
+            .with_exec(["pip", "install", "-e", ".[dev]"])
             .with_env_variable("PYTHONPATH", "/app/src")
             .with_env_variable("MOCK_JIRA_URL", "http://mock-jira:8080")
             .with_env_variable("MOCK_OPENAI_URL", "http://mock-openai:8081")
@@ -312,17 +319,16 @@ print('Mock services integration test completed successfully')
         )
 
     async def _get_test_base_container(self) -> dagger.Container:
-        """Get base container with cached dependencies."""
+        """Get base container with cached dependencies from pyproject.toml."""
         return (
             dag.container()
             .from_("python:3.11-slim")
-            # Cache pip dependencies
-            .with_cache("/root/.cache/pip", dag.cache_volume("pip-cache"))
-            # Install testing dependencies
+            # Cache pip dependencies using mounted cache
+            .with_mounted_cache("/root/.cache/pip", dag.cache_volume("pip-cache"))
+            # Install testing-specific dependencies (not in pyproject.toml)
             .with_exec([
                 "pip", "install", 
-                "coverage", "unittest-xml-reporting", "memory-profiler",
-                "dagger-io", "openai", "pydantic", "python-dotenv", "requests"
+                "coverage", "unittest-xml-reporting", "memory-profiler"
             ])
             # Set up Python path
             .with_env_variable("PYTHONPATH", "/app/src")
@@ -416,7 +422,7 @@ print('Mock services integration test completed successfully')
                 container
                 .with_exec([
                     "python", "-m", "unittest", 
-                    f"src.demo_mcp_app.tests.{test_module}", "-v"
+                    f"tests.{test_module}", "-v"
                 ])
                 .stdout()
             )
