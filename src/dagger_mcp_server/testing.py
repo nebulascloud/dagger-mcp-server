@@ -318,12 +318,14 @@ print('Mock services integration test completed successfully')
             .from_("python:3.11-slim")
             # Cache pip dependencies
             .with_cache("/root/.cache/pip", dag.cache_volume("pip-cache"))
-            # Install testing dependencies
+            # Install testing dependencies (excluding packages that may have network issues)
             .with_exec([
                 "pip", "install", 
                 "coverage", "unittest-xml-reporting", "memory-profiler",
-                "dagger-io", "openai", "pydantic", "python-dotenv", "requests"
+                "openai", "pydantic", "python-dotenv", "requests"
             ])
+            # Note: dagger-io and openai-agents excluded to avoid network issues
+            # The testing infrastructure uses mock implementations when these are not available
             # Set up Python path
             .with_env_variable("PYTHONPATH", "/app/src")
         )
