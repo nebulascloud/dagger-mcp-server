@@ -293,10 +293,14 @@ class TestAsyncMethods(unittest.IsolatedAsyncioTestCase):
     async def test_batch_query(self, mock_runner):
         """Test batch query processing."""
         # Setup mock
-        mock_result = Mock()
-        mock_result.final_output_as.return_value = "Test response"
+        mock_result = Mock()  # Use regular Mock, not AsyncMock
+        mock_result.final_output_as = Mock(return_value="Test response")
         mock_result.last_response_id = "test-id"
-        mock_runner.run.return_value = mock_result
+        
+        # Make run async
+        async def async_run(*args, **kwargs):
+            return mock_result
+        mock_runner.run = async_run
 
         # Setup client as connected
         self.client._connected = True
