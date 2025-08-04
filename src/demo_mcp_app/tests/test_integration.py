@@ -37,8 +37,9 @@ class MockAsyncContextManager:
 class MockMCPServer:
     """Mock MCP server for integration testing."""
     
-    def __init__(self):
+    def __init__(self, server_params=None):
         self.connected = False
+        self.server_params = server_params
     
     async def connect(self):
         self.connected = True
@@ -216,8 +217,8 @@ class TestIntegrationWorkflows(unittest.IsolatedAsyncioTestCase):
             if call_count < 3:  # Fail first 2 times
                 raise Exception("Temporary failure")
             # Succeed on 3rd attempt
-            result = AsyncMock()
-            result.final_output_as = AsyncMock(return_value="Success after retries")
+            result = Mock()
+            result.final_output_as = Mock(return_value="Success after retries")
             result.last_response_id = "retry-success"
             return result
         
@@ -286,8 +287,8 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         async def selective_failure(agent, question, **kwargs):
             if "fail" in question.lower():
                 raise Exception("Intentional failure")
-            result = AsyncMock()
-            result.final_output_as = AsyncMock(return_value=f"Success: {question}")
+            result = Mock()
+            result.final_output_as = Mock(return_value=f"Success: {question}")
             result.last_response_id = "success-id"
             return result
         
