@@ -33,6 +33,14 @@ class MockMCPServer:
     
     async def cleanup(self):
         self.connected = False
+    
+    # Add async context manager support
+    async def __aenter__(self):
+        await self.connect()
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.cleanup()
 
 
 class MockAgent:
@@ -49,26 +57,26 @@ class MockRunner:
     @staticmethod
     async def run(agent, question, previous_response_id=None):
         """Mock runner that simulates OpenAI responses."""
-        result = Mock()
+        result = AsyncMock()  # Changed from Mock()
         
         # Simulate different types of responses based on question
         if "projects" in question.lower():
-            result.final_output_as.return_value = "Here are your Jira projects: MCP, DEMO, TEST"
+            result.final_output_as = AsyncMock(return_value="Here are your Jira projects: MCP, DEMO, TEST")
         elif "issues" in question.lower():
-            result.final_output_as.return_value = """Here are some issues in the MCP project:
+            result.final_output_as = AsyncMock(return_value="""Here are some issues in the MCP project:
 
 1. **[MCP-374]**: Epic Implementation - Description: Main epic for CI pipeline
 2. **[MCP-376]**: Code Quality Stage - Status: Done 
-3. **[MCP-377]**: Testing Stage Implementation - Status: In Progress"""
+3. **[MCP-377]**: Testing Stage Implementation - Status: In Progress""")
         elif "dependencies" in question.lower():
-            result.final_output_as.return_value = """Based on analysis, here are suggested dependencies:
+            result.final_output_as = AsyncMock(return_value="""Based on analysis, here are suggested dependencies:
 
 MCP-377 should depend on MCP-376 before implementation can begin.
-MCP-376 provides the foundation for MCP-377."""
+MCP-376 provides the foundation for MCP-377.""")
         elif "link" in question.lower():
-            result.final_output_as.return_value = "Link has been successfully created between MCP-377 and MCP-376"
+            result.final_output_as = AsyncMock(return_value="Link has been successfully created between MCP-377 and MCP-376")
         else:
-            result.final_output_as.return_value = f"Processed: {question}"
+            result.final_output_as = AsyncMock(return_value=f"Processed: {question}")
         
         result.last_response_id = f"response-{hash(question) % 10000}"
         return result
@@ -196,8 +204,8 @@ class TestIntegrationWorkflows(unittest.IsolatedAsyncioTestCase):
             if call_count < 3:  # Fail first 2 times
                 raise Exception("Temporary failure")
             # Succeed on 3rd attempt
-            result = Mock()
-            result.final_output_as.return_value = "Success after retries"
+            result = AsyncMock()
+            result.final_output_as = AsyncMock(return_value="Success after retries")
             result.last_response_id = "retry-success"
             return result
         
@@ -266,8 +274,8 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         async def selective_failure(agent, question, **kwargs):
             if "fail" in question.lower():
                 raise Exception("Intentional failure")
-            result = Mock()
-            result.final_output_as.return_value = f"Success: {question}"
+            result = AsyncMock()
+            result.final_output_as = AsyncMock(return_value=f"Success: {question}")
             result.last_response_id = "success-id"
             return result
         

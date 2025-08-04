@@ -215,8 +215,8 @@ class TestClientPerformance(unittest.IsolatedAsyncioTestCase):
         
         with patch('openai_mcp_demo.Runner') as mock_runner:
             # Setup fast mock responses
-            mock_result = Mock()
-            mock_result.final_output_as.return_value = "Quick response"
+            mock_result = AsyncMock()
+            mock_result.final_output_as = AsyncMock(return_value="Quick response")
             mock_result.last_response_id = "test-id"
             mock_runner.run.return_value = mock_result
             
@@ -241,8 +241,8 @@ class TestClientPerformance(unittest.IsolatedAsyncioTestCase):
             # Add realistic delay to simulate network
             async def delayed_response(*args, **kwargs):
                 await asyncio.sleep(0.01)  # 10ms delay
-                result = Mock()
-                result.final_output_as.return_value = "Concurrent response"
+                result = AsyncMock()
+                result.final_output_as = AsyncMock(return_value="Concurrent response")
                 result.last_response_id = "concurrent-id"
                 return result
             
