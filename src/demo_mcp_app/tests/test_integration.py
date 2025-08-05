@@ -5,7 +5,7 @@ Focuses on core functionality rather than internal implementation details.
 """
 
 import unittest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch, AsyncMock, MagicMock
 import sys
 import os
 
@@ -60,18 +60,25 @@ class TestOptimizedMCPClient(unittest.IsolatedAsyncioTestCase):
     @patch('openai_mcp_demo.OptimizedMCPClient')
     async def test_demo_function(self, mock_client_class, mock_load_dotenv):
         """Test the demo function runs without errors."""
-        mock_client = AsyncMock()
-        mock_client.connect = AsyncMock()
+        # Create a simple async context manager using MagicMock
+        class MockAsyncContextManager:
+            def __init__(self, client):
+                self.client = client
+            
+            async def __aenter__(self):
+                return self.client
+            
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+        
+        mock_client = MagicMock()
         mock_client.query = AsyncMock(return_value="Mock response")
-        mock_client.get_conversation_history = AsyncMock(return_value=[])
-        mock_client.get_last_response_id = AsyncMock(return_value="mock-id")
+        mock_client.get_conversation_history = MagicMock(return_value=[])
+        mock_client.get_last_response_id = MagicMock(return_value="mock-id")
         mock_client._last_response_id = "mock-id"
         
-        # Create an async context manager
-        async def mock_connect():
-            yield mock_client
-        mock_client.connect.return_value = mock_connect()
-        
+        # Set up the connect method to return our custom async context manager
+        mock_client.connect = MagicMock(return_value=MockAsyncContextManager(mock_client))
         mock_client_class.return_value = mock_client
         
         await demo_optimized_client()  # Should not raise
