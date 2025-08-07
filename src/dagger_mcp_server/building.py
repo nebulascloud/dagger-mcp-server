@@ -5,7 +5,15 @@ Implements comprehensive building with container images and artifact generation:
 - Multi-stage container images (development, testing, production)
 - Python package distribution (wheel and source)
 - Documentation generation with Sphinx
-- Deployment manifests (Docker Compose, Kubernetes)
+- Dep        # Write manifests to container
+        manifest_container = (
+            build_container
+            .with_new_file("/manifests/docker-compose.yml", docker_compose_content)
+            .with_new_file("/manifests/k8s-deployment.yaml", k8s_deployment_content)  
+            .with_new_file("/manifests/k8s-service.yaml", k8s_service_content)
+        )
+        
+        return manifest_container.directory("/manifests")anifests (Docker Compose, Kubernetes)
 - Build optimization and security hardening
 - Artifact validation and integrity checking
 """
@@ -112,28 +120,28 @@ class Builder:
         production_container = (
             dag.container()
             .from_("python:3.11-slim")
-            # Security: Create non-root user
+            # Create non-root user for security
             .with_exec(["groupadd", "-r", "mcpuser"])
             .with_exec(["useradd", "-r", "-g", "mcpuser", "-d", "/app", "-s", "/sbin/nologin", "mcpuser"])
-            # Install only production dependencies
+            # Use cached pip directory for faster installs
             .with_mounted_cache("/root/.cache/pip", dag.cache_volume("pip-cache"))
             .with_directory("/app", source)
             .with_workdir("/app")
-            # Install production dependencies from pyproject.toml
-            .with_exec(["pip", "install", "--no-dev", "-e", "."])
-            # Security: Remove unnecessary packages and files
+            # Install only production dependencies
+            .with_exec(["pip", "install", "--no-cache-dir", "-e", "."])
+        )
+        
+        # Clean up to reduce image size (skip cache cleanup due to mounted volume)
+        production_container = (
+            production_container
+            .with_exec(["pip", "cache", "purge"])
             .with_exec(["apt-get", "autoremove", "-y"])
             .with_exec(["apt-get", "clean"])
             .with_exec(["rm", "-rf", "/var/lib/apt/lists/*"])
-            .with_exec(["rm", "-rf", "/root/.cache"])
-            # Set proper permissions
+            # Set up proper permissions and switch to non-root user
             .with_exec(["chown", "-R", "mcpuser:mcpuser", "/app"])
-            # Switch to non-root user
             .with_user("mcpuser")
-            # Set entry point
             .with_entrypoint(["python", "-m", "jira_dependency_analyzer.cli"])
-            # Health check
-            .with_exec(["python", "-c", "import jira_dependency_analyzer; print('Health check passed')"])
         )
         
         return production_container
@@ -301,15 +309,15 @@ spec:
   type: ClusterIP
 """
         
-        # Write manifests to container
-        manifest_container = (
-            build_container
-            .with_new_file("/manifests/docker-compose.yml", docker_compose_content)
-            .with_new_file("/manifests/k8s-deployment.yaml", k8s_deployment_content)
-            .with_new_file("/manifests/k8s-service.yaml", k8s_service_content)
+        # Write manifests to container using directory API
+        manifest_dir = (
+            dag.directory()
+            .with_new_file("docker-compose.yml", docker_compose_content)
+            .with_new_file("k8s-deployment.yaml", k8s_deployment_content)  
+            .with_new_file("k8s-service.yaml", k8s_service_content)
         )
         
-        return manifest_container.directory("/manifests")
+        return manifest_dir
 
     @function
     async def generate_documentation(
@@ -356,7 +364,6 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx_autodoc_typehints',
 ]
 
 # Templates path
@@ -506,14 +513,24 @@ Deploy using the provided Kubernetes manifests:
    kubectl apply -f k8s-service.yaml
 '''
         
-        # Generate documentation
+        # Generate documentation using directory API
+        docs_dir = (
+            dag.directory()
+            .with_new_file("conf.py", sphinx_conf_content)
+            .with_new_file("index.rst", index_rst_content)
+            .with_new_file("api.rst", api_rst_content)
+            .with_new_file("user-guide.rst", user_guide_rst_content)
+        )
+        
+        # Build documentation in container
         docs_container = (
-            docs_container
-            .with_new_file("/docs/conf.py", sphinx_conf_content)
-            .with_new_file("/docs/index.rst", index_rst_content)
-            .with_new_file("/docs/api.rst", api_rst_content)
-            .with_new_file("/docs/user-guide.rst", user_guide_rst_content)
+            dag.container()
+            .from_("python:3.11-slim")
+            .with_mounted_cache("/root/.cache/pip", dag.cache_volume("pip-cache"))
+            .with_directory("/source", source)
+            .with_directory("/docs", docs_dir)
             .with_workdir("/docs")
+            .with_exec(["pip", "install", "--no-cache-dir", "sphinx", "sphinx-rtd-theme"])
             .with_exec(["sphinx-build", "-b", "html", ".", "_build/html"])
         )
         

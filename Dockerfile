@@ -88,8 +88,8 @@ WORKDIR /app
 # Copy application files
 COPY . .
 
-# Install only production dependencies
-RUN pip install --no-cache-dir --no-dev -e . && \
+# Install only production dependencies (no dev extras)
+RUN pip install --no-cache-dir -e . && \
     pip cache purge
 
 # Security: Set proper file permissions

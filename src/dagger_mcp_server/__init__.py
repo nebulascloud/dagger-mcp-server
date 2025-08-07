@@ -190,3 +190,135 @@ Service Tests Passed: {'✅' if results.service_tests_passed else '❌'}
 Jira Mock Calls: {results.jira_mock_calls}
 OpenAI Mock Calls: {results.openai_mock_calls}
 """
+
+    # Building Stage Functions
+    @function
+    async def build_artifacts(
+        self,
+        source: dagger.Directory,
+        environment: str = "production"
+    ) -> str:
+        """
+        Build all artifacts for the MCP application.
+        
+        Args:
+            source: Source directory containing demo_mcp_app
+            environment: Target environment (production, staging, development)
+            
+        Returns:
+            Build results summary
+        """
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from building import Builder
+        
+        builder = Builder()
+        results = await builder.build_artifacts(source, environment)
+        
+        return results.summary()
+
+    @function
+    async def build_production_image(
+        self,
+        source: dagger.Directory
+    ) -> dagger.Container:
+        """
+        Build optimized production container image.
+        
+        Args:
+            source: Source directory containing demo_mcp_app
+            
+        Returns:
+            Production-ready container with security hardening
+        """
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from building import Builder
+        
+        builder = Builder()
+        return await builder.build_production_image(source)
+
+    @function
+    async def generate_python_packages(
+        self,
+        source: dagger.Directory
+    ) -> dagger.Directory:
+        """
+        Generate Python wheel and source distribution packages.
+        
+        Args:
+            source: Source directory containing demo_mcp_app
+            
+        Returns:
+            Directory containing Python distribution packages
+        """
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from building import Builder
+        
+        builder = Builder()
+        return await builder.generate_python_packages(source)
+
+    @function
+    async def create_deployment_manifests(
+        self,
+        source: dagger.Directory,
+        registry: str = "ghcr.io/nebulascloud"
+    ) -> dagger.Directory:
+        """
+        Generate Docker Compose and Kubernetes deployment manifests.
+        
+        Args:
+            source: Source directory containing demo_mcp_app
+            registry: Container registry URL
+            
+        Returns:
+            Directory containing deployment manifests
+        """
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from building import Builder
+        
+        builder = Builder()
+        return await builder.create_deployment_manifests(source, registry)
+
+    @function
+    async def generate_documentation(
+        self,
+        source: dagger.Directory
+    ) -> dagger.Directory:
+        """
+        Generate API documentation from source code.
+        
+        Args:
+            source: Source directory containing demo_mcp_app
+            
+        Returns:
+            Directory containing generated documentation
+        """
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        from building import Builder
+        
+        builder = Builder()
+        return await builder.generate_documentation(source)
