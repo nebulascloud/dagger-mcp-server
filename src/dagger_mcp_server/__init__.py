@@ -1,6 +1,7 @@
 import dagger
 from dagger import dag, function, object_type
 from typing import List, Optional
+import json
 
 @object_type
 class DaggerMcpServer:
@@ -322,3 +323,141 @@ OpenAI Mock Calls: {results.openai_mock_calls}
         
         builder = Builder()
         return await builder.generate_documentation(source)
+
+    # Security Stage (MCP-379)
+    @function
+    async def security_scan(
+        self,
+        source: dagger.Directory,
+        image_ref: Optional[str] = None,
+        enable_image_scan: Optional[bool] = None,
+        # Optional overrides for gating + secret scanning
+        max_high: Optional[int] = None,
+        fail_on_critical: Optional[bool] = None,
+        severity_floor: Optional[str] = None,
+        include_env_files: Optional[bool] = None,
+        timeout_seconds: Optional[int] = None,
+    docker_hub_token: Optional[str] = None,
+    ) -> dagger.Directory:
+        """Run security scanning stage (Bandit, pip-audit/safety, secrets, optional Trivy).
+
+        Args:
+            source: Source directory to scan.
+            image_ref: Optional image reference for Trivy when SECURITY_ENABLE_IMAGE_SCAN=true.
+
+        Returns:
+            Directory containing security-report.json, summary.md, and raw tool outputs.
+        """
+        import sys, os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        from security import SecurityStage
+        stage = SecurityStage()
+        return await stage.security_scan(
+            source,
+            image_ref,
+            enable_image_scan=enable_image_scan,
+            max_high=max_high,
+            fail_on_critical=fail_on_critical,
+            severity_floor=severity_floor,
+            include_env_files=include_env_files,
+            timeout_seconds=timeout_seconds,
+            docker_hub_token=docker_hub_token,
+        )
+
+    @function
+    async def security_scan_smoke(
+        self,
+        source: dagger.Directory,
+        image_ref: Optional[str] = None,
+        enable_image_scan: Optional[bool] = None,
+        # Optional overrides for gating + secret scanning
+        max_high: Optional[int] = None,
+        fail_on_critical: Optional[bool] = None,
+        severity_floor: Optional[str] = None,
+        include_env_files: Optional[bool] = None,
+        timeout_seconds: Optional[int] = None,
+    docker_hub_token: Optional[str] = None,
+    ) -> str:
+        """Run a smoke test of the security scan and return a concise PASS/FAIL summary.
+
+        Runs the full security_scan inside Dagger, reads the produced artifacts,
+        and emits a short textual summary suitable for CI/CD logs.
+        """
+        artifacts = await self.security_scan(
+            source,
+            image_ref,
+            enable_image_scan=enable_image_scan,
+            max_high=max_high,
+            fail_on_critical=fail_on_critical,
+            severity_floor=severity_floor,
+            include_env_files=include_env_files,
+            timeout_seconds=timeout_seconds,
+            docker_hub_token=docker_hub_token,
+        )
+        report_json = await artifacts.file("security-report.json").contents()
+        report = json.loads(report_json)
+        summ = report.get("summary", {})
+        by_sev = summ.get("by_severity", {})
+        gate_pass = summ.get("gate_pass", False)
+        rationale = "; ".join(summ.get("gate_rationale", []))
+        return (
+            "Security Scan Smoke Result:\n"
+            f"Gate: {'PASS' if gate_pass else 'FAIL'}\n"
+            f"Total Findings: {summ.get('total', 0)} | "
+            f"Critical:{by_sev.get('Critical',0)} High:{by_sev.get('High',0)} "
+            f"Medium:{by_sev.get('Medium',0)} Low:{by_sev.get('Low',0)} Info:{by_sev.get('Info',0)}\n"
+            f"Rationale: {rationale}\n"
+        )
+
+    @function
+    async def build_and_security_scan(
+        self,
+        source: dagger.Directory,
+        publish_address: str,
+        enable_image_scan: Optional[bool] = None,
+        # Optional overrides for gating + secret scanning
+        max_high: Optional[int] = None,
+        fail_on_critical: Optional[bool] = None,
+        severity_floor: Optional[str] = None,
+        include_env_files: Optional[bool] = None,
+        timeout_seconds: Optional[int] = None,
+    docker_hub_token: Optional[str] = None,
+    ) -> dagger.Directory:
+        """Build a production image, publish it, then run security scan (incl. image scan).
+
+        Notes:
+        - Requires registry access for the Dagger engine to publish and Trivy to pull.
+        - Use a public registry or ensure you've logged in (e.g., GHCR) on the host.
+
+        Returns:
+            Directory with security-report.json, summary.md, and raw/* outputs.
+        """
+        import sys, os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+
+        # Build image
+        from building import Builder
+        builder = Builder()
+        container = await builder.build_production_image(source)
+
+        # Publish to provided address (e.g., ghcr.io/org/repo:tag)
+        image_ref = await container.publish(publish_address)
+
+        # Run security scan including Trivy via image_ref (enable via env var)
+        from security import SecurityStage
+        stage = SecurityStage()
+        return await stage.security_scan(
+            source,
+            image_ref=image_ref,
+            enable_image_scan=enable_image_scan,
+            max_high=max_high,
+            fail_on_critical=fail_on_critical,
+            severity_floor=severity_floor,
+            include_env_files=include_env_files,
+            timeout_seconds=timeout_seconds,
+            docker_hub_token=docker_hub_token,
+        )
